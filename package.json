@@ -5,7 +5,7 @@
     "author": "Upkeep <upkeep@airmail.cc>",
     "bugs": "https://github.com/bonfire-xmpp/verse/issues",
     "contributors": [
-	"Lance Stout <lancestout@gmail.com>",
+        "Lance Stout <lancestout@gmail.com>",
         "Philipp Hancke <fippo@andyet.net>",
         "Steven Lloyd Watkin <lloyd@evilprofessor.co.uk>"
     ],
@@ -73,7 +73,8 @@
     "keywords": [
         "jingle",
         "verse",
-	"bonfire", "bonfire-xmpp"
+        "bonfire",
+        "bonfire-xmpp",
         "xmpp"
     ],
     "license": "MIT",
