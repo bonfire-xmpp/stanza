@@ -1,21 +1,24 @@
-# StanzaJS
+# Verse
 
-**Modern XMPP, with a JSON API.**
-
-<hr />
-<p>
-<a href="https://npmjs.org/package/stanza"><img src="https://img.shields.io/npm/v/stanza.svg?style=flat" alt="npm" /></a>
-<a href="https://stanzajs.org/discuss/logs/"><img src="https://img.shields.io/badge/endpoint.svg?url=https://stanzajs.org/discuss/badge.json&style=flat" alt="chat" /></a>
-</p>
+**Modern XMPP for the modern web.**
 
 ## What is this?
 
-StanzaJS is a JavaScript/TypeScript library for using modern XMPP, and it does that by exposing everything as JSON. Unless you insist, you have no need to ever see or touch any XML when using StanzaJS.
+Verse is a JavaScript/TypeScript XMPP library forked from Stanza used in the [bonfire](https://github.com/bonfire-xmpp/bonfire) XMPP client. 
+
+XML stanzas are converted to-and-fro JSON, meaning you won't have to work with XML unless you explicitly want to. 
+
+Extending functionality can be done in two ways, depending on how _core_ the changes are:
+ - Changing the original sources
+ - Writing a plugin
+
+Plugins can be added from third-party code as well, and are more suited for adding _additional_ functionality. 
+The idea with plugins is to extend existing types, add more XML/JSON translations, and emit a new event. See: [Creating Plugins](docs/Create_Plugin.md)
 
 ## Installing
 
 ```sh
-npm install stanza
+npm install @bonfire-xmpp/verse
 ```
 
 ## Echo Client Demo
@@ -23,12 +26,16 @@ npm install stanza
 ```javascript
 import * as XMPP from 'stanza';
 
+// Config can be setup after instantiation with updateConfig()
 const client = XMPP.createClient({
     jid: 'echobot@example.com',
     password: 'hunter2',
 
     // If you have a .well-known/host-meta.json file for your
-    // domain, the connection transport config can be skipped.
+    //  domain, the connection transport config can be skipped.
+    //
+    // Manually running autodetection of these transports can 
+    //  be done with client.discoverBindings('server.test')
     transports: {
         websocket: 'wss://example.com:5281/xmpp-websocket',
         bosh: 'https://example.com:5281/http-bind'
@@ -65,33 +72,23 @@ client.connect();
 -   [Using PubSub](docs/Using_PubSub.md)
 -   [Using Stream Management](docs/Using_Stream_Management.md)
 
-## Discussion
-
-MUC Room: [discuss@stanzajs.org](https://stanzajs.org/discuss/logs) / [Logs](https://stanzajs.org/discuss/logs)
 
 ## Related Modules
 
-These are related modules that form part of StanzaJS:
+These are related modules that may be useful to users of this library:
 
 | Name                                                   | Description                                                          | Source                                              |
 | ------------------------------------------------------ | -------------------------------------------------------------------- | --------------------------------------------------- |
 | [stanza-shims](https://npmjs.org/package/stanza-shims) | Runtime shims used by StanzaJS for node, browsers, and React Native. | [Source](https://github.com/legastero/stanza-shims) |
-
-## Recommended Modules
-
-These are some additional modules that are highly recommended for use with StanzaJS:
-
-| Name                                                       | Description                                                                      | Source                                           |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------ |
-| [staydown](https://npmjs.org/package/staydown)             | Render helper that keeps an element scrolled to the bottom based on user intent. | [Source](https://github.com/fritzy/staydown)     |
-| [webrtc-adapter](https://npmjs.org/package/webrtc-adapter) | Shims browsers to provide a consistent WebRTC API.                               | [Source](https://github.com/webrtchacks/adapter) |
+| [webrtc-adapter](https://npmjs.org/package/webrtc-adapter) | Shims browsers to provide a consistent WebRTC API.               | [Source](https://github.com/webrtchacks/adapter) |
 
 ## License
 
 [MIT](./LICENSE.md)
 
-Portions of StanzaJS are derived from prior works. [See NOTICE file for details.](./NOTICE.md)
+Portions of Verse are derived from prior works. [See NOTICE file for details.](./NOTICE.md)
 
-## Created By
+## Why fork?
 
-If you like this, follow [@lancestout](http://twitter.com/lancestout) on Twitter.
+The original `stanza` library was used as a part of the [bonfire](https://github.com/bonfire-xmpp/bonfire) XMPP client. 
+However, modifications to the library were relatively often necessary to meet downstream demands.
