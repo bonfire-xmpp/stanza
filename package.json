@@ -1,10 +1,11 @@
 {
-    "name": "stanza",
-    "description": "Modern XMPP in the browser, with a JSON API",
-    "version": "12.17.1",
-    "author": "Lance Stout <lancestout@gmail.com>",
-    "bugs": "https://github.com/legastero/stanza/issues",
+    "name": "@bonfire-xmpp/verse",
+    "description": "Modern XMPP for the modern web",
+    "version": "1.0.0",
+    "author": "Upkeep <upkeep@airmail.cc>",
+    "bugs": "https://github.com/bonfire-xmpp/verse/issues",
     "contributors": [
+	"Lance Stout <lancestout@gmail.com>",
         "Philipp Hancke <fippo@andyet.net>",
         "Steven Lloyd Watkin <lloyd@evilprofessor.co.uk>"
     ],
@@ -71,8 +72,8 @@
     },
     "keywords": [
         "jingle",
-        "stanza",
-        "stanza.io",
+        "verse",
+	"bonfire", "bonfire-xmpp"
         "xmpp"
     ],
     "license": "MIT",
@@ -88,7 +89,7 @@
     "private": true,
     "repository": {
         "type": "git",
-        "url": "https://github.com/legastero/stanza.git"
+        "url": "https://github.com/bonfire-xmpp/verse.git"
     },
     "scripts": {
         "build": "ts-node scripts/build",
