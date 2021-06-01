@@ -5,7 +5,6 @@ export default {
         'async',
         'crypto',
         'events',
-        'net',
         'node-fetch',
         'punycode',
         'sdp',
@@ -19,5 +18,5 @@ export default {
         file: 'dist/es/index.module.js',
         format: 'es'
     },
-    plugins: [resolve({ browser: true, preferBuiltins: true })]
+    plugins: [resolve({ browser: true })]
 };

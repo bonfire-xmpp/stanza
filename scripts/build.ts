@@ -1,10 +1,5 @@
-import { execSync } from 'child_process';
+import { execSync as Child } from 'child_process';
 import FS from 'fs';
-
-const Child = (command: string) => {
-    const ret = execSync(command, { stdio: 'inherit' });
-    return ret;
-}
 
 const Pkg = JSON.parse(FS.readFileSync('package.json').toString());
 
