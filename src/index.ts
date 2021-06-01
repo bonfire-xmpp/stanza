@@ -180,6 +180,18 @@ export interface AgentConfig {
     resource?: string;
 
     /**
+     * Priority for this resource
+     *
+     * Between -128 and 127, inclusive. Negative means the server will (most likely)
+     *  avoid sending you messages
+     *
+     * Priorities will get clamped to [-128, 127], if outside bounds.
+     *
+     * @default 0
+     */
+    priority?: number;
+
+    /**
      * IQ Timeout
      *
      * The number of seconds to wait before timing out IQ requests.

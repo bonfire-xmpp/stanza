@@ -441,6 +441,7 @@ export default class Client extends EventEmitter {
     public sendPresence(data: Presence = {}): string {
         const pres = {
             id: this.nextId(),
+            priority: (this.config.priority && Math.min(Math.max(this.config.priority, -128), 127)) || 0,
             ...data
         };
         this.send('presence', pres);
