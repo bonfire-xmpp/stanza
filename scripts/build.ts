@@ -50,7 +50,3 @@ FS.writeFileSync(
         2
     )
 );
-
-// Create package bundle
-Child('cd dist/npm && npm pack');
-Child(`mv dist/npm/*.tgz ${__dirname}/../dist/${Pkg.name}.tgz`);
