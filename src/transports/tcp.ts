@@ -48,7 +48,7 @@ export default class TCP extends Duplex implements Transport {
             registry: this.stanzas,
             wrappedStream: true
         });
-    
+
         this.parser.on('data', (e: ParsedData) => {
             const name = e.kind;
             const stanzaObj = e.stanza;
@@ -79,7 +79,7 @@ export default class TCP extends Duplex implements Transport {
 
             this.push({ kind: e.kind, stanza: e.stanza });
         });
-    
+
         this.parser.on('error', (err: any) => {
             const streamError = { condition: StreamErrorCondition.InvalidXML };
             this.client.emit('stream:error', streamError, err);
@@ -94,9 +94,9 @@ export default class TCP extends Duplex implements Transport {
 
         this.initParser();
 
-        const host: string = this.config.url.split(":")[0];
-        const port: number = this.config.port || parseInt(this.config.url.split(":")[1]);
-        
+        const host: string = this.config.url.split(':')[0];
+        const port: number = this.config.port || parseInt(this.config.url.split(':')[1]);
+
         if (port === 5223 || this.config.directTLS) {
             // direct TLS connection
             this.socket = net.connect({ host, port }, () => {
@@ -114,31 +114,36 @@ export default class TCP extends Duplex implements Transport {
             this.socket.on('data', packet => this.parser!.write(packet.toString('utf8')));
         }
     }
-    
+
     public _write(chunk: string, encoding: string, done: (err?: Error) => void): void {
         const data = Buffer.from(chunk, 'utf8').toString();
         this.client.emit('raw', 'outgoing', data);
         (this.tlssocket || this.socket)?.write(data);
         done();
     }
-    
-    public _read(): void { return; }
-    
-    public disconnect(cleanly: boolean = true): void {
-        if (cleanly) this.write(`</stream:stream>`);
-        setTimeout(() => {
-            this.hasStream = false;
-            (this.tlssocket || this.socket)?.destroy();
-            this.emit('end');
-        }, cleanly ? 500 : 0);
+
+    public _read(): void {
+        return;
     }
-    
+
+    public disconnect(cleanly = true): void {
+        if (cleanly) this.write(`</stream:stream>`);
+        setTimeout(
+            () => {
+                this.hasStream = false;
+                (this.tlssocket || this.socket)?.destroy();
+                this.emit('end');
+            },
+            cleanly ? 500 : 0
+        );
+    }
+
     public restart(): void {
         this.hasStream = false;
         this.initParser();
         this.openStream();
     }
-    
+
     public async send(name: string, data?: JSONData): Promise<void> {
         let output: string | undefined;
         if (data) {
@@ -147,24 +152,26 @@ export default class TCP extends Duplex implements Transport {
         if (!output) {
             return;
         }
-        
+
         return new Promise<void>((resolve, reject) => {
             this.write(output, 'utf8', err => (err ? reject(err) : resolve()));
         });
     }
-    
+
     private openStream(): void {
-        this.write(`<?xml version='1.0'?><stream:stream from='${this.config.jid}' to='${this.config.server}' version='1.0' xml:lang='${this.config.lang}' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams'>`);
+        this.write(
+            `<?xml version='1.0'?><stream:stream from='${this.config.jid}' to='${this.config.server}' version='1.0' xml:lang='${this.config.lang}' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams'>`
+        );
     }
 
     private negotiateTls(): void {
         this.tlssocket = tls.connect({
-            socket: this.socket!,
+            socket: this.socket!
         });
         this.initParser();
         this.tlssocket.on('secureConnect', () => this.openStream());
         this.tlssocket.on('data', chunk => {
-            let data = chunk.toString('utf8');
+            const data = chunk.toString('utf8');
             this.client.emit('raw', 'incoming', data);
             this.parser!.write(data);
         });
