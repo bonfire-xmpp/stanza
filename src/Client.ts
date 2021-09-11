@@ -11,6 +11,7 @@ import { core as corePlugins } from './plugins';
 import Protocol, { IQ, Message, Presence, StreamError, Stream } from './protocol';
 import BOSH from './transports/bosh';
 import WebSocket from './transports/websocket';
+import TCP from './transports/tcp';
 import { timeoutPromise, uuid } from './Utils';
 
 interface StreamData {
@@ -102,8 +103,11 @@ export default class Client extends EventEmitter {
 
         this.transports = {
             bosh: BOSH,
-            websocket: WebSocket
+            websocket: WebSocket,
         };
+        if (typeof window === 'undefined') {
+            this.transports.tcp = TCP;
+        }
 
         this.incomingDataQueue = priorityQueue<StreamData>(async (task, done) => {
             const { kind, stanza } = task;
@@ -284,7 +288,8 @@ export default class Client extends EventEmitter {
             jid: '',
             transports: {
                 bosh: true,
-                websocket: true
+                websocket: true,
+                tcp: true,
             },
             useStreamManagement: true,
             ...currConfig,
@@ -344,11 +349,11 @@ export default class Client extends EventEmitter {
             this.transport.disconnect(false);
         }
 
-        const transportPref = ['websocket', 'bosh'];
+        const transportPref = ['tcp', 'websocket', 'bosh'];
         let endpoints: { [key: string]: string[] } | undefined;
         for (const name of transportPref) {
             let conf = this.config.transports![name];
-            if (!conf) {
+            if (!conf || !this.transports[name]) {
                 continue;
             }
             if (typeof conf === 'string') {
@@ -364,13 +369,31 @@ export default class Client extends EventEmitter {
                         continue;
                     }
                 }
-                endpoints[name] = (endpoints[name] || []).filter(
-                    url => url.startsWith('wss:') || url.startsWith('https:')
-                );
+                endpoints[name] = endpoints[name] || [];
+                switch (name) {
+                    case 'tcp': {
+                        endpoints[name].push(this.config.server + ':5222');
+                        break;
+                    };
+                    case 'websocket': {
+                        endpoints[name] = endpoints[name].filter(
+                            url => url.startsWith('wss:')
+                        );
+                        break;
+                    };
+                    case 'bosh': {
+                        endpoints[name] = endpoints[name].filter(
+                            url => url.startsWith('https:')
+                        );
+                        break;
+                    };
+                }
                 if (!endpoints[name] || !endpoints[name].length) {
                     continue;
                 }
                 conf = { url: endpoints[name][0] };
+            } else if (name === 'tcp') {
+                conf.url ??= this.config.server + (conf.directTLS ? ":5223" : ":5222");
             }
 
             this.transport = new this.transports[name](
