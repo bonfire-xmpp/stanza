@@ -1,10 +1,7 @@
 import { execSync } from 'child_process';
 import FS from 'fs';
 
-const Child = (command: string) => {
-    const ret = execSync(command, { stdio: 'inherit' });
-    return ret;
-}
+const Child = (command: string) => execSync(command, { stdio: 'inherit' });
 
 const Pkg = JSON.parse(FS.readFileSync('package.json').toString());
 
@@ -22,14 +19,14 @@ Child('npm run compile:module');
 fileReplace('dist/cjs/Constants.js', '__VERSE_VERSION__', Pkg.version);
 fileReplace('dist/es/Constants.js', '__VERSE_VERSION__', Pkg.version);
 
-Child('npm run compile:rollup');
-
 if (!FS.existsSync('dist')) {
     FS.mkdirSync('dist');
 }
 if (!FS.existsSync('dist/npm')) {
     FS.mkdirSync('dist/npm');
 }
+
+Child('npm run compile:rollup');
 Child('cp -r dist/cjs/* dist/npm/');
 Child('cp dist/es/index.module.js dist/npm/module.js');
 Child(`cp ${__dirname}/../*.md dist/npm`);
