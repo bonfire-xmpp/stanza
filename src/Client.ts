@@ -1,7 +1,7 @@
 import { AsyncPriorityQueue, priorityQueue } from 'async';
 import { EventEmitter } from 'events';
 
-import { Agent, AgentConfig, Transport } from './';
+import { Agent, AgentConfig, Transport, TransportConfig } from './';
 import StreamManagement from './helpers/StreamManagement';
 import * as JID from './JID';
 import * as JXT from './jxt';
@@ -105,7 +105,7 @@ export default class Client extends EventEmitter {
             bosh: BOSH,
             websocket: WebSocket,
         };
-        if (typeof window === 'undefined') {
+        if (typeof window === 'undefined' && typeof self === 'undefined') {
             this.transports.tcp = TCP;
         }
 
@@ -190,7 +190,7 @@ export default class Client extends EventEmitter {
             );
         });
 
-        this.on('--transport-disconnected', async () => {
+        const dcHandler = async () => {
             const drains: Array<Promise<void>> = [];
             if (!this.incomingDataQueue.idle()) {
                 drains.push(this.incomingDataQueue.drain());
@@ -217,7 +217,9 @@ export default class Client extends EventEmitter {
             }
 
             this.emit('disconnected');
-        });
+        };
+        this.on('--transport-disconnected', dcHandler);
+        this.on('--transport-error', dcHandler);
 
         this.on('iq', (iq: IQ) => {
             const iqType = iq.type;
@@ -292,6 +294,8 @@ export default class Client extends EventEmitter {
                 tcp: true,
             },
             useStreamManagement: true,
+            transportPreferenceOrder: ['tcp', 'websocket', 'bosh'],
+            requireSecureTransport: true,
             ...currConfig,
             ...opts
         };
@@ -303,6 +307,9 @@ export default class Client extends EventEmitter {
             this.config.credentials = this.config.credentials || {};
             this.config.credentials.password = this.config.password;
             delete this.config.password;
+        }
+        if (!this.config.transportPreferenceOrder) {
+            this.config.transportPreferenceOrder = Object.keys(this.config.transports ?? {});
         }
     }
 
@@ -329,7 +336,7 @@ export default class Client extends EventEmitter {
         if (typeof pluginInit !== 'function') {
             return;
         }
-        pluginInit((this as unknown) as Agent, this.stanzas, this.config);
+        pluginInit(this as unknown as Agent, this.stanzas, this.config);
     }
 
     public nextId(): string {
@@ -349,71 +356,88 @@ export default class Client extends EventEmitter {
             this.transport.disconnect(false);
         }
 
-        const transportPref = ['tcp', 'websocket', 'bosh'];
-        let endpoints: { [key: string]: string[] } | undefined;
+        const transportPref = this.config.transportPreferenceOrder ?? [];
+        const transportEndpoints: Array<[Transport, TransportConfig]> = [];
+        let endpoints: { [key: string]: string[] } = {};
+        try {
+            endpoints = await (this as unknown as Agent).discoverBindings(
+                this.config.server!
+            );
+        } catch (e) {
+            console.error(e);
+        }
         for (const name of transportPref) {
-            let conf = this.config.transports![name];
-            if (!conf || !this.transports[name]) {
+            const settings = this.config.transports![name];
+            if (!settings || !this.transports![name]) {
                 continue;
             }
-            if (typeof conf === 'string') {
-                conf = { url: conf };
-            } else if (conf === true) {
-                if (!endpoints) {
-                    try {
-                        endpoints = await ((this as unknown) as Agent).discoverBindings(
-                            this.config.server!
-                        );
-                    } catch (err) {
-                        console.error(err);
-                        continue;
-                    }
-                }
-                endpoints[name] = endpoints[name] || [];
-                switch (name) {
-                    case 'tcp': {
-                        endpoints[name].push(this.config.server + ':5222');
-                        break;
-                    };
-                    case 'websocket': {
-                        endpoints[name] = endpoints[name].filter(
-                            url => url.startsWith('wss:')
-                        );
-                        break;
-                    };
-                    case 'bosh': {
-                        endpoints[name] = endpoints[name].filter(
-                            url => url.startsWith('https:')
-                        );
-                        break;
-                    };
-                }
-                if (!endpoints[name] || !endpoints[name].length) {
-                    continue;
-                }
-                conf = { url: endpoints[name][0] };
-            } else if (name === 'tcp') {
-                conf.url ??= this.config.server + (conf.directTLS ? ":5223" : ":5222");
-            }
-
-            this.transport = new this.transports[name](
-                (this as unknown) as Agent,
+            const transport = new this.transports![name](
+                this as unknown as Agent,
                 this.sm,
                 this.stanzas
             );
-            this.transport.connect({
-                acceptLanguages: this.config.acceptLanguages || ['en'],
+
+            let config: TransportConfig = {
+                acceptLanguages: this.config.acceptLanguages || [this.config.lang ?? 'en'],
                 jid: this.config.jid!,
-                lang: this.config.lang || 'en',
+                lang: this.config.lang ?? 'en',
                 server: this.config.server!,
-                url: conf.url!,
-                ...conf
-            });
-            return;
+            };
+
+            if (typeof settings === 'string') {
+                transportEndpoints.push([transport, { ...config, url: settings }]);
+            } else if (settings === true) {
+                if (transport.discoverBindings) {
+                    for (const ep of (await transport.discoverBindings(this.config.server!) ?? [])) {
+                        transportEndpoints.push([transport, { ...config, ...ep }]);
+                    }
+                } else {
+                    for (const ep of (endpoints[name] ?? [])) {
+                        transportEndpoints.push([transport, { ...config, url: ep }]);
+                    }
+                }
+            } else if (typeof settings === 'object') {
+                transportEndpoints.push([transport, { ...config, ...settings }]);
+            }
         }
 
-        console.error('No endpoints found for the requested transports.');
+        const secureOptions: Array<[Transport, TransportConfig]> = [];
+        const insecureOptions: Array<[Transport, TransportConfig]> = [];
+
+        // secureOptions + insecureOptions will be sorted as transportEndpoints
+        // is created in priority order.
+        for (const [transport, endpoint] of transportEndpoints) {
+            if (
+                endpoint.url?.startsWith('https://') ||
+                endpoint.url?.startsWith('wss://') ||
+                transport instanceof TCP
+            ) {
+                secureOptions.push([transport, endpoint]);
+            } else {
+                insecureOptions.push([transport, endpoint]);
+            }
+        }
+
+        const options = 
+            this.config.requireSecureTransport
+            ? secureOptions
+            : secureOptions.concat(insecureOptions);
+
+        for (const [transport, endpoint] of options) {
+            this.transport = transport;
+            const dcPromise = new Promise(resolve => this.once('disconnected', resolve));
+            try {
+                await this.transport.connect(endpoint);
+                return;
+            } catch (_) {
+                await this.disconnect();
+                this.transport = undefined;
+            }
+            await dcPromise;
+        }
+
         this.emit('--transport-disconnected');
+        throw 'No adequate endpoints found for the requested transports.';
     }
 
     public async disconnect(): Promise<void> {
