@@ -36,7 +36,7 @@ export default class WSConnection extends Duplex implements Transport {
             this.end(err);
         });
         
-        this.on('end', (err) => {
+        this.on('end', () => {
             if (this.client.transport === this) {
                 this.client.emit('--transport-disconnected');
             }
@@ -122,7 +122,7 @@ export default class WSConnection extends Duplex implements Transport {
                 this.client.emit('--transport-error', new Error(reason));
                 this.push(null);
             };
-            this.socket.onerror = (err) => {
+            this.socket.onerror = () => {
                 this.push(null);
             };
             this.client.once('--transport-connected', () => resolve());

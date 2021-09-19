@@ -189,7 +189,7 @@ export default class BOSH extends Duplex implements Transport {
     }
 
     public async connect(opts: TransportConfig): Promise<void> {
-        return await new Promise(async (resolve, reject) => {
+        return await new Promise((resolve, reject) => {
             this.config = opts;
     
             this.url = opts.url!;
@@ -214,8 +214,11 @@ export default class BOSH extends Duplex implements Transport {
                 this.client.emit('session:started');
                 return;
             }
-    
-            await this._send({
+            
+            this.client.once('--transport-connected', () => resolve());
+            this.client.once('--transport-error', err => reject(err));
+
+            this._send({
                 lang: opts.lang,
                 maxHoldOpen: this.maxHoldOpen,
                 maxWaitTime: this.maxWaitTime,
@@ -223,12 +226,8 @@ export default class BOSH extends Duplex implements Transport {
                 version: '1.6',
                 xmppVersion: '1.0'
             });
-            
-            this.client.once('--transport-connected', () => resolve());
-            this.client.once('--transport-error', err => reject(err));
         });
-    }
-        
+    }   
 
     public restart(): void {
         this.hasStream = false;

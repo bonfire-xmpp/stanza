@@ -8,7 +8,6 @@ import StreamManagement from '../helpers/StreamManagement';
 import { Stream, StreamFeatures } from '../protocol';
 
 import { JSONData, ParsedData, Registry, StreamParser } from '../jxt';
-import features from '../plugins/features';
 
 export default class TCP extends Duplex implements Transport {
     public hasStream?: boolean;
@@ -109,7 +108,7 @@ export default class TCP extends Duplex implements Transport {
             
             this.initParser();
             
-            let host: string = this.config.url!.split(':')[0];
+            const host: string = this.config.url!.split(':')[0];
             let port: number = this.config.port || parseInt(this.config.url!.split(':')![1] || '-1');
             
             if (port < 0 || port > 65535) {

@@ -377,7 +377,7 @@ export default class Client extends EventEmitter {
                 this.stanzas
             );
 
-            let config: TransportConfig = {
+            const config: TransportConfig = {
                 acceptLanguages: this.config.acceptLanguages || [this.config.lang ?? 'en'],
                 jid: this.config.jid!,
                 lang: this.config.lang ?? 'en',

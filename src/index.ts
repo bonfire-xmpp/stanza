@@ -324,7 +324,6 @@ export {
 export const VERSION = Constants.VERSION;
 
 import Plugins from './plugins';
-import { TlsOptions } from 'tls';
 export * from './plugins';
 
 export function createClient(opts: AgentConfig): Agent {
