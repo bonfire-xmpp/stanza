@@ -5,6 +5,8 @@ export default {
         'async',
         'crypto',
         'events',
+        'net',
+        'tls',
         'node-fetch',
         'punycode',
         'sdp',

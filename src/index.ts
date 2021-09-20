@@ -99,6 +99,8 @@ export interface AgentEvents {
     // Any "--" prefixed events are for internal use only
     '--reset-stream-features': void;
     '--transport-disconnected': void;
+    '--transport-connected': void;
+    '--transport-error': Error;
 
     '*': (...args: any[]) => void;
 }
@@ -114,6 +116,8 @@ export interface Agent extends StrictEventEmitter<EventEmitter, AgentEvents> {
     sessionStarting: boolean;
     sessionStarted: boolean;
     sessionTerminating: boolean;
+
+    transports: {[key: string]: new (client: Agent, sm: StreamManagement, registry: JXT.Registry) => Transport};
 
     use(plugin: (agent: Agent, registry: JXT.Registry, config: AgentConfig) => void): void;
 
@@ -213,9 +217,34 @@ export interface AgentConfig {
      * If a transport is set to an object, it MUST include a <code>url</code> value for
      * the connection URL.
      *
-     * @default { websocket: true, bosh: true }
+     * @default { websocket: true, bosh: true, tcp: true }
      */
     transports?: { [key: string]: boolean | string | Partial<TransportConfig> };
+
+    /**
+     * Transport Preference Order
+     *
+     * Specify the order in which transports should be tried when connecting.
+     * 
+     * If a configured transport type is not listed, it will be skipped.
+     *
+     * @default ['tcp', 'websocket', 'bosh']
+     */
+     transportPreferenceOrder?: string[];
+
+    /**
+     * Require Secure Transport
+     * 
+     * Guarantees that any transport chosen will use TLS or equivalent. If
+     * no secure transport is available, connection will fail.
+     * 
+     * If a transport is specified which is not secure, this option will
+     * prevent it from being used. If ws:// and https:// is available, but
+     * websocket is higher priority than BOSH, BOSH will still be used.
+     * 
+     * @default true
+     */
+    requireSecureTransport?: boolean;
 
     /**
      * Account Password
@@ -244,18 +273,22 @@ export interface Transport {
     stream?: Stream;
     authenticated?: boolean;
 
-    connect(opts: TransportConfig): void;
+    discoverBindings?(host: string): Promise<Array<Partial<TransportConfig>> | null>;
+
+    connect(opts: TransportConfig): Promise<void>;
     disconnect(cleanly?: boolean): void;
     restart(): void;
     send(name: string, data?: JXT.JSONData): Promise<void>;
 }
 
 export interface TransportConfig {
+    server: string;
+    jid: string;
     lang?: string;
     acceptLanguages?: string[];
-    server: string;
-    url: string;
-    jid: string;
+
+    // WebSocket & BOSH settings
+    url?: string;
 
     // BOSH settings
     sid?: string;
@@ -263,6 +296,11 @@ export interface TransportConfig {
     maxRetries?: number;
     wait?: number;
     maxHoldOpen?: number;
+
+    // TCP/TLS settings
+    directTLS?: boolean,
+    port?: number,
+    pubkey?: Buffer,
 }
 
 import * as RSM from './helpers/RSM';
